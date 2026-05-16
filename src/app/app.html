@@ -1,0 +1,333 @@
+<div class="app-container">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">FlowForge</div>
+      </div>
+      <div class="version-badge">v4.0</div>
+    </div>
+
+    <!-- PALETTE -->
+    <div class="palette-section">
+      <div class="section-title">Nodes</div>
+      <div class="node-list">
+
+        <div draggable="true" (dragstart)="onDragStart('log')" class="palette-node log">
+          <div class="node-icon-box">📝</div>
+          <div class="node-info"><div class="node-name">Log</div><div class="node-desc">Print text output</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('color')" class="palette-node color">
+          <div class="node-icon-box">🎨</div>
+          <div class="node-info"><div class="node-name">Color</div><div class="node-desc">Colored output</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('repeat')" class="palette-node repeat">
+          <div class="node-icon-box">🔄</div>
+          <div class="node-info"><div class="node-name">Repeat</div><div class="node-desc">Loop next node</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('counter')" class="palette-node counter">
+          <div class="node-icon-box">🔢</div>
+          <div class="node-info"><div class="node-name">Counter</div><div class="node-desc">Count numbers</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('delay')" class="palette-node delay">
+          <div class="node-icon-box">⏱️</div>
+          <div class="node-info"><div class="node-name">Delay</div><div class="node-desc">Pause execution</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('timer')" class="palette-node timer">
+          <div class="node-icon-box">⏰</div>
+          <div class="node-info"><div class="node-name">Timer</div><div class="node-desc">Countdown timer</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('alert')" class="palette-node alert">
+          <div class="node-icon-box">🔔</div>
+          <div class="node-info"><div class="node-name">Alert</div><div class="node-desc">Browser popup</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('random')" class="palette-node random">
+          <div class="node-icon-box">🎲</div>
+          <div class="node-info"><div class="node-name">Random</div><div class="node-desc">Random number</div></div>
+        </div>
+
+        <div draggable="true" (dragstart)="onDragStart('image')" class="palette-node image">
+          <div class="node-icon-box">🖼️</div>
+          <div class="node-info"><div class="node-name">Image</div><div class="node-desc">Display image</div></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="actions-section">
+      <button (click)="save()" class="btn btn-save">💾 Save</button>
+      <button (click)="exportProject()" class="btn btn-export">📤 Export</button>
+      <label class="btn btn-import">📥 Import
+        <input type="file" (change)="importProject($event)" accept=".json" hidden />
+      </label>
+      <button (click)="clearCanvas()" class="btn btn-clear">🗑️ Clear</button>
+    </div>
+
+    <!-- OUTPUT LOG -->
+    <div class="output-section">
+      <div class="output-header">
+        <span>📋 Output Log</span>
+        <div class="output-header-right">
+          <span class="output-count-badge">{{ output.length }}</span>
+          <button (click)="output = []" class="btn-clear-output">Clear</button>
+        </div>
+      </div>
+      <div class="output-list">
+        @for (item of output; track item.timestamp) {
+          <!-- قبل -->
+          <div class="output-item" [style.borderLeftColor]="item.color">
+            <div class="output-item-top">
+              <span class="output-step-num">#{{ item.step }}</span>
+              <span class="output-type-tag">{{ item.fromNode }}</span>
+            </div>
+            <div class="output-text-content" [style.color]="item.color">{{ item.text }}</div>
+          </div>
+        }
+        @if (output.length === 0) {
+          <div class="output-empty-state">
+            <div class="empty-state-icon">🚀</div>
+            <div>Run a workflow to see output</div>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CANVAS -->
+  <div
+    class="canvas-container"
+    (drop)="onDrop($event)"
+    (dragover)="allowDrop($event)"
+    (mousemove)="onMouseMove($event)"
+    (mouseup)="cancelConnection()">
+
+    <div class="canvas-bg"></div>
+
+    <!-- IMAGE OVERLAY -->
+    @if(displayImage.show){
+      <div class="image-overlay" (click)="closeImage()">
+        <div class="image-container">
+          <button class="image-close" (click)="closeImage()">✕</button>
+          <img [src]="displayImage.url" alt="Displayed Image" class="displayed-image" />
+          <div class="image-label">🖼️ Image Displayed</div>
+        </div>
+      </div>
+    }
+
+    <!-- SVG CONNECTIONS -->
+    <svg class="connections-layer">
+      @for (edge of edges; track $index) {
+        <path
+          [attr.d]="getCurve(edge.from, edge.to)"
+          [attr.stroke]="isEdgeInActivePath(edge.from, edge.to) ? '#1d9e75' : '#4b5563'"
+          [attr.stroke-width]="isEdgeInActivePath(edge.from, edge.to) ? 3 : 2"
+          fill="none"
+          stroke-linecap="round"
+          [class.connection-active]="isEdgeInActivePath(edge.from, edge.to)"
+        />
+      }
+      @if(connectingLine && getPreviewCurve()){
+        <path
+          [attr.d]="getPreviewCurve()"
+          stroke="#f43f5e"
+          fill="none"
+          stroke-width="2"
+          stroke-dasharray="8,4"
+          stroke-linecap="round"
+        />
+      }
+    </svg>
+
+    <!-- NODES -->
+    <div class="nodes-layer">
+      @for (node of nodes; track node.id) {
+        <div
+          (mousedown)="startDragNode(node, $event)"
+          class="canvas-node"
+          [style.left.px]="node.x"
+          [style.top.px]="node.y"
+          [style.z-index]="draggingNode?.id === node.id ? 100 : 10"
+          [class.node-highlight]="isNodeInActivePath(node.id)"
+          [class.node-dragging]="draggingNode?.id === node.id"
+          [ngClass]="getNodeTypeClass(node.type)">
+
+          <!-- Header -->
+          <div class="node-header" [ngClass]="getNodeHeaderClass(node.type)">
+            <span class="node-header-icon">{{ getNodeIcon(node.type) }}</span>
+            <span class="node-header-title">{{ node.type | titlecase }}</span>
+            <button (click)="deleteNode(node.id)" class="node-close" title="Delete">×</button>
+          </div>
+
+          <!-- Body -->
+          <div class="node-body">
+
+            <!-- Workflow Name for Agent -->
+            <div class="workflow-name-row">
+              <label class="node-label agent-label">🤖 Workflow Name (for Agent)</label>
+              <input
+                class="node-input workflow-name-input"
+                [(ngModel)]="node.name"
+                placeholder="e.g. my log workflow"
+              />
+            </div>
+
+            @if(node.type === 'log'){
+              <input class="node-input" [(ngModel)]="node.data.text" placeholder="Enter text to print..." />
+              <div class="color-picker-row">
+                <input type="color" [(ngModel)]="node.data.color" class="color-picker" />
+                <span class="color-label">Text Color</span>
+              </div>
+            }
+            @if(node.type === 'color'){
+              <input class="node-input" [(ngModel)]="node.data.text" placeholder="Text to print..." />
+              <div class="color-picker-row">
+                <input type="color" [(ngModel)]="node.data.color" class="color-picker" />
+                <span class="color-label">Color</span>
+              </div>
+            }
+            @if(node.type === 'repeat'){
+              <label class="node-label">Repeat count:</label>
+              <input type="number" class="node-input" [(ngModel)]="node.data.repeatCount" min="1" max="20" />
+            }
+            @if(node.type === 'counter'){
+              <div class="node-row">
+                <div class="node-col"><label class="node-label">Start</label><input type="number" class="node-input-sm" [(ngModel)]="node.data.start" /></div>
+                <div class="node-col"><label class="node-label">End</label><input type="number" class="node-input-sm" [(ngModel)]="node.data.end" /></div>
+                <div class="node-col"><label class="node-label">Step</label><input type="number" class="node-input-sm" [(ngModel)]="node.data.step" /></div>
+              </div>
+            }
+            @if(node.type === 'delay'){
+              <label class="node-label">Milliseconds:</label>
+              <input type="number" class="node-input" [(ngModel)]="node.data.milliseconds" min="100" max="10000" />
+            }
+            @if(node.type === 'alert'){
+              <label class="node-label">Alert Message:</label>
+              <input class="node-input" [(ngModel)]="node.data.text" placeholder="Enter alert text..." />
+            }
+            @if(node.type === 'random'){
+              <div class="node-row">
+                <div class="node-col"><label class="node-label">Min</label><input type="number" class="node-input-sm" [(ngModel)]="node.data.min" /></div>
+                <div class="node-col"><label class="node-label">Max</label><input type="number" class="node-input-sm" [(ngModel)]="node.data.max" /></div>
+              </div>
+            }
+            @if(node.type === 'timer'){
+              <label class="node-label">Seconds:</label>
+              <input type="number" class="node-input" [(ngModel)]="node.data.seconds" min="1" max="60" />
+            }
+            @if(node.type === 'image'){
+              <div class="image-upload-area">
+                @if(!node.data.imageUrl) {
+                  <div class="upload-buttons">
+                    <button class="upload-btn upload-btn-device" (click)="triggerImageUpload(node.id)">
+                      <span class="upload-icon">📱</span><span>Upload from Device</span>
+                    </button>
+                    <div class="upload-divider"><span>OR</span></div>
+                    <label class="node-label">Image URL:</label>
+                    <input class="node-input" [(ngModel)]="node.data.imageUrl" placeholder="https://example.com/image.jpg" />
+                  </div>
+                }
+                @if(node.data.imageUrl) {
+                  <div class="image-preview-container">
+                    <img [src]="node.data.imageUrl" class="node-preview-img" alt="Preview" />
+                    <div class="image-actions">
+                      <button class="image-action-btn image-change-btn" (click)="triggerImageUpload(node.id)">🔄 Change</button>
+                      <button class="image-action-btn image-remove-btn" (click)="clearImage(node.id)">🗑️ Remove</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <button class="node-run-btn" (click)="runFromNode(node.id)" [disabled]="isRunning">
+              ▶ {{ isRunning ? 'Running...' : 'Run' }}
+            </button>
+
+          </div>
+
+          <!-- Ports -->
+          <div class="node-port node-port-left" (mouseup)="endConnection(node.id)" title="Input">
+            <div class="port-dot"></div>
+          </div>
+          <div class="node-port node-port-right" (mousedown)="startConnection(node.id, $event)" title="Output">
+            <div class="port-dot"></div>
+          </div>
+
+        </div>
+      }
+
+      @if(nodes.length === 0){
+        <div class="canvas-empty">
+          <div class="canvas-empty-icon">⚡</div>
+          <div class="canvas-empty-title">FlowForge Canvas</div>
+          <div class="canvas-empty-subtitle">Drag nodes from the left panel or ask the Agent</div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- CHATBOT PANEL -->
+  <div class="chatbot-panel">
+
+    <div class="chat-header">
+      <div class="agent-status-dot"></div>
+      <div>
+        <div class="chat-title">FlowForge Agent</div>
+        <div class="chat-subtitle">Powered by DeepSeek via OpenRouter</div>
+      </div>
+    </div>
+
+    <!-- Quick Hints -->
+    <div class="hint-chips">
+      <button class="hint-chip" (click)="sendHint('ما هي الـ workflows الموجودة؟')">📋 عرض الكل</button>
+      <button class="hint-chip" (click)="sendHint('شغّل أول workflow')">▶ تشغيل أول</button>
+      <button class="hint-chip" (click)="sendHint('أضف نود counter')">➕ إضافة نود</button>
+      <button class="hint-chip" (click)="sendHint('امسح الكانفاس')">🗑️ مسح</button>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages">
+      @for (msg of chatMessages; track $index) {
+        <div class="chat-msg" [ngClass]="msg.role === 'user' ? 'msg-user' : 'msg-agent'">
+          @if(msg.role === 'assistant'){
+            <div class="agent-avatar">🤖</div>
+          }
+          <div class="msg-bubble" [class.typing]="msg.isTyping">
+            {{ msg.content }}
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-input-area">
+      <textarea
+        class="chat-textarea"
+        [(ngModel)]="chatInput"
+        (keydown)="onChatKeydown($event)"
+        placeholder="اكتب أمرك هنا... (Enter للإرسال)"
+        rows="2"
+        [disabled]="isChatLoading">
+      </textarea>
+      <button
+        class="chat-send-btn"
+        (click)="sendChatMessage()"
+        [disabled]="isChatLoading || !chatInput.trim()">
+        {{ isChatLoading ? '...' : '↑' }}
+      </button>
+    </div>
+
+  </div>
+
+</div>
